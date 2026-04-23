@@ -1,0 +1,683 @@
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdalatAI | PPC Expert System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f9fafb; 
+            height: 100vh; 
+            display: flex; 
+            flex-direction: column; 
+            overflow: hidden;
+        }
+        #chat-window { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+        .chat-container { max-width: 800px; margin: 0 auto; width: 100%; }
+        
+        .glass-input {
+            background: white;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+            border: 1px solid rgba(229, 231, 235, 1);
+        }
+        
+        ::-webkit-scrollbar { width: 0px; background: transparent; }
+        
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .message { max-width: 80%; }
+        .user-msg { background: #1e40af; color: white; border-radius: 20px 20px 0 20px; }
+        .ai-msg { background: #f1f5f9; color: #1e2937; border-radius: 20px 20px 20px 0; }
+        
+        /* RTL Support for Urdu */
+        .ai-msg[dir="rtl"] {
+            direction: rtl;
+            text-align: right;
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col" x-data="{ dropdownOpen: false }">
+
+    <!-- Top Navigation -->
+    <nav class="p-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100">
+        <div class="flex items-center space-x-2 cursor-pointer" onclick="window.location.href='{% url 'index' %}'">
+            <div class="bg-black text-white p-1.5 rounded-lg">
+                <i class="fas fa-gavel text-sm"></i>
+            </div>
+            <span class="font-bold text-xl tracking-tight">AdalatAI</span>
+        </div>
+       
+        <div class="flex items-center space-x-4">
+            {% if user.is_authenticated %}
+                <div class="relative" @click.away="dropdownOpen = false">
+                    <button @click="dropdownOpen = !dropdownOpen" 
+                            class="flex items-center space-x-3 focus:outline-none">
+                        <div class="text-right hidden md:block">
+                            <span class="text-sm font-medium text-gray-700">
+                                <i class="fas fa-user-circle text-blue-600"></i> {{ user.first_name|default:user.username }}
+                            </span>
+                            {% if user.role == 'lawyer' %}
+                                {% if user.lawyer_profile.is_approved %}
+                                    <span class="ml-2 text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full">Verified Lawyer</span>
+                                {% else %}
+                                    <span class="ml-2 text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full">Pending Approval</span>
+                                {% endif %}
+                            {% endif %}
+                        </div>
+                        <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                    </button>
+                    
+                    <div x-show="dropdownOpen" 
+                         @click.away="dropdownOpen = false"
+                         class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 py-2 z-20"
+                         style="display: none;">
+                        <a href="{% url 'profile_view' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-user-circle mr-2"></i> My Profile
+                        </a>
+                        <a href="{% url 'edit_profile' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-edit mr-2"></i> Edit Profile
+                        </a>
+                        <a href="{% url 'change_password' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            <i class="fas fa-key mr-2"></i> Change Password
+                        </a>
+                        <div class="border-t my-1"></div>
+                        <a href="{% url 'logout' %}" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">
+                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                        </a>
+                    </div>
+                </div>
+            {% else %}
+                <a href="{% url 'signup_login' %}" class="bg-black text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-800 transition shadow-sm">
+                    Sign Up / Login
+                </a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Django Messages Toast -->
+    {% if messages %}
+    <div id="django-messages" class="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4">
+        {% for message in messages %}
+        <div class="mb-2 p-4 rounded-xl shadow-lg flex items-center
+                    {% if message.tags == 'error' %}
+                        bg-red-50 text-red-700 border-l-4 border-red-500
+                    {% elif message.tags == 'success' %}
+                        bg-green-50 text-green-700 border-l-4 border-green-500
+                    {% elif message.tags == 'warning' %}
+                        bg-yellow-50 text-yellow-700 border-l-4 border-yellow-500
+                    {% else %}
+                        bg-blue-50 text-blue-700 border-l-4 border-blue-500
+                    {% endif %}">
+            <i class="fas 
+                {% if message.tags == 'error' %}fa-exclamation-circle text-red-500
+                {% elif message.tags == 'success' %}fa-check-circle text-green-500
+                {% elif message.tags == 'warning' %}fa-exclamation-triangle text-yellow-500
+                {% else %}fa-info-circle text-blue-500{% endif %} mr-3 text-lg"></i>
+            <span class="flex-1">{{ message }}</span>
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <!-- Chat Area -->
+    <main id="chat-window" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+        <div id="welcome-msg" class="h-full flex flex-col items-center justify-center text-center space-y-4 pb-20">
+            <div class="bg-blue-50 p-4 rounded-full mb-4">
+                <i class="fas fa-gavel text-4xl text-blue-600"></i>
+            </div>
+            <h1 class="text-4xl font-semibold text-gray-800 tracking-tight">How can I help with your case?</h1>
+            <p class="text-gray-500 max-w-md">Analyze FIRs and explore the Pakistan Penal Code with our specialized legal expert system.</p>
+            
+            {% if not user.is_authenticated %}
+            <div class="mt-8">
+                <a href="{% url 'signup_login' %}" class="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-700 transition">
+                    <i class="fas fa-user-plus mr-2"></i> Sign Up to Get Started
+                </a>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="response-area" class="chat-container space-y-8 hidden"></div>
+    </main>
+
+    <!-- Input Footer -->
+    <footer class="input-footer p-4">
+        <div class="chat-container relative">
+            
+            <div id="preview-container" class="hidden absolute -top-16 left-1/2 transform -translate-x-1/2 bg-white border rounded-xl p-3 shadow-xl flex items-center gap-3 z-20">
+                <div class="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden border">
+                    <img id="preview-img" src="" class="object-cover h-full w-full">
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-gray-700 truncate" id="file-name-display">File Attached</p>
+                    <button onclick="removeFile()" class="text-red-500 text-xs hover:underline">Remove</button>
+                </div>
+            </div>
+
+            <div class="glass-input rounded-3xl flex items-center p-2 pl-5">
+                <label for="fir-upload" class="cursor-pointer p-3 text-gray-400 hover:text-blue-600 transition">
+                    <i class="fa-solid fa-paperclip text-xl"></i>
+                    <input type="file" id="fir-upload" class="hidden" accept="image/*,.pdf" onchange="handleFileUpload(event)">
+                </label>
+                
+                <input type="text" id="user-input"
+                       placeholder="Ask about a section or describe a case..."
+                       class="flex-1 px-4 py-3 focus:outline-none text-gray-700 bg-transparent text-base">
+                
+                <button onclick="processQuery()" 
+                        class="bg-black text-white w-11 h-11 rounded-2xl flex items-center justify-center hover:bg-gray-800 transition shadow-md">
+                    <i class="fa-solid fa-arrow-up text-lg"></i>
+                </button>
+            </div>
+
+            <p class="text-[10px] text-center text-gray-400 mt-3 leading-tight">
+                AdalatAI provides general legal information based on PPC &amp; other laws.<br>
+                This is not a substitute for professional legal advice.
+            </p>
+        </div>
+    </footer>
+
+    <script>
+        const isAuthenticated = {% if user.is_authenticated %}true{% else %}false{% endif %};
+        let uploadedFile = null;
+        let isProcessing = false;
+        let currentSessionId = null;
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const messagesContainer = document.getElementById('django-messages');
+            if (messagesContainer) {
+                setTimeout(() => {
+                    messagesContainer.style.transition = 'opacity 0.3s';
+                    messagesContainer.style.opacity = '0';
+                    setTimeout(() => messagesContainer?.remove(), 300);
+                }, 3000);
+            }
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const maxSize = file.type === 'application/pdf' ? 10 * 1024 * 1024 : 5 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    alert(`File too large! Max ${maxSize / (1024*1024)}MB allowed.`);
+                    return;
+                }
+                uploadedFile = file;
+                
+                const previewImg = document.getElementById('preview-img');
+                const fileNameDisplay = document.getElementById('file-name-display');
+                const isPDF = file.type === 'application/pdf';
+                
+                if (isPDF) {
+                    previewImg.src = 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 384 512\'%3E%3Cpath fill=\'%23e53e3e\' d=\'M64 0C28.7 0 0 28.7 0 64L0 448c0 35.3 28.7 64 64 64l256 0c35.3 0 64-28.7 64-64l0-288-128 0c-17.7 0-32-14.3-32-32L224 0 64 0zM256 0l0 128 128 0L256 0z\'/%3E%3C/svg%3E';
+                    fileNameDisplay.textContent = `PDF: ${file.name}`;
+                } else {
+                    const reader = new FileReader();
+                    reader.onload = ev => previewImg.src = ev.target.result;
+                    reader.readAsDataURL(file);
+                    fileNameDisplay.textContent = `Image: ${file.name}`;
+                }
+                
+                document.getElementById('preview-container').classList.remove('hidden');
+            }
+        }
+
+        function removeFile() {
+            uploadedFile = null;
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('fir-upload').value = '';
+        }
+
+        function addMessage(text, isUser, isRTL = false) {
+            const welcome = document.getElementById('welcome-msg');
+            if (welcome) welcome.classList.add('hidden');
+            
+            const area = document.getElementById('response-area');
+            const div = document.createElement('div');
+            div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} mb-6 fade-in`;
+            
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message px-5 py-3 ${isUser ? 'user-msg' : 'ai-msg'}`;
+            
+            if (isRTL) {
+                messageDiv.setAttribute('dir', 'rtl');
+            }
+            
+            messageDiv.innerHTML = text.replace(/\n/g, '<br>');
+            div.appendChild(messageDiv);
+            area.appendChild(div);
+            area.scrollTop = area.scrollHeight;
+            
+            return messageDiv;
+        }
+
+        function showErrorNotification(message) {
+            const existingNotif = document.getElementById('error-notification');
+            if (existingNotif) existingNotif.remove();
+            
+            const notif = document.createElement('div');
+            notif.id = 'error-notification';
+            notif.className = 'fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-md px-4';
+            notif.innerHTML = `
+                <div class="mb-2 p-4 rounded-xl shadow-lg flex items-center bg-red-50 text-red-700 border-l-4 border-red-500">
+                    <i class="fas fa-exclamation-circle text-red-500 mr-3 text-lg"></i>
+                    <span class="flex-1">${message}</span>
+                </div>
+            `;
+            document.body.appendChild(notif);
+            
+            setTimeout(() => {
+                notif.style.transition = 'opacity 0.3s';
+                notif.style.opacity = '0';
+                setTimeout(() => notif.remove(), 300);
+            }, 3000);
+        }
+
+        async function processQuery() {
+            if (!isAuthenticated) {
+                showErrorNotification('Please login or sign up to ask questions.');
+                return;
+            }
+            
+            const input = document.getElementById('user-input');
+            const query = input.value.trim();
+
+            if (!query && !uploadedFile) {
+                showErrorNotification('Please type a query or attach a file');
+                return;
+            }
+            if (isProcessing) return;
+
+            isProcessing = true;
+            document.getElementById('response-area').classList.remove('hidden');
+
+            if (query) {
+                addMessage(query, true);
+            } else {
+                const fileType = uploadedFile.type === 'application/pdf' ? 'PDF' : 'Image';
+                addMessage(`${fileType} uploaded for analysis`, true);
+            }
+
+            // Create empty AI message for streaming
+            const aiMessageDiv = addMessage('', false);
+            let streamBuffer = '';
+
+            input.value = '';
+
+            const formData = new FormData();
+            if (query) formData.append('query', query);
+            if (uploadedFile) formData.append('fir_image', uploadedFile);
+            if (currentSessionId) formData.append('session_id', currentSessionId);
+
+            try {
+                const response = await fetch('/api/analyze-stream/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': getCookie('csrftoken') },
+                    body: formData
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+                let lawyers = null;
+                let isRTL = false;
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+                    
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                
+                                if (data.type === 'session') {
+                                    currentSessionId = data.session_id;
+                                } else if (data.type === 'language') {
+                                    isRTL = data.lang === 'urdu';
+                                    if (isRTL) {
+                                        aiMessageDiv.setAttribute('dir', 'rtl');
+                                    }
+                                } else if (data.type === 'lawyers') {
+                                    lawyers = data.lawyers;
+                                } else if (data.type === 'token') {
+                                    streamBuffer += data.content;
+                                    aiMessageDiv.innerHTML = streamBuffer.replace(/\n/g, '<br>');
+                                    document.getElementById('chat-window').scrollTop = document.getElementById('chat-window').scrollHeight;
+                                } else if (data.type === 'done') {
+                                    aiMessageDiv.innerHTML = data.full_response;
+                                    
+                                    if (lawyers && lawyers.length > 0) {
+                                        const area = document.getElementById('response-area');
+                                        let html = `<div class="mt-6 p-4 bg-white rounded-2xl border fade-in"><p class="text-sm font-semibold text-gray-600 mb-3">Recommended Lawyers:</p>`;
+                                        lawyers.forEach(lawyer => {
+                                            html += `
+                                                <a href="/lawyer/${lawyer.id}/" class="block p-3 hover:bg-gray-50 rounded-xl flex justify-between items-center border-b last:border-none">
+                                                    <div>
+                                                        <span class="font-medium">${lawyer.name}</span><br>
+                                                        <span class="text-xs text-gray-500">${lawyer.specialty} • ${lawyer.experience}</span>
+                                                    </div>
+                                                    <span class="text-blue-600 text-sm">View Profile →</span>
+                                                </a>`;
+                                        });
+                                        html += `</div>`;
+                                        area.innerHTML += html;
+                                        area.scrollTop = area.scrollHeight;
+                                    }
+                                }
+                            } catch (e) {
+                                console.error('Parse error:', e);
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                aiMessageDiv.innerHTML = '❌ Network error. Please check your connection.';
+            }
+
+            uploadedFile = null;
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('fir-upload').value = '';
+            isProcessing = false;
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                processQuery();
+            }
+        });
+    </script>
+</body>
+</html> {% endcomment %}
+
+
+
+
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdalatAI | Legal Expert System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f9fafb; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+        #chat-window { flex: 1; overflow-y: auto; scroll-behavior: smooth; }
+        .chat-container { max-width: 850px; margin: 0 auto; width: 100%; }
+        .glass-input { background: white; box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07); border: 1px solid rgba(229, 231, 235, 1); }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #e5e7eb; border-radius: 10px; }
+        .fade-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        
+        /* Message Styling */
+        .message { max-width: 85%; line-height: 1.6; font-size: 0.95rem; }
+        .user-msg { background: #1e40af; color: white; border-radius: 18px 18px 0 18px; box-shadow: 0 4px 12px rgba(30, 64, 175, 0.15); }
+        .ai-msg { background: white; color: #1e2937; border-radius: 18px 18px 18px 0; border: 1px solid #e5e7eb; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+        
+        /* Markdown-like formatting styles */
+        .ai-msg b, .ai-msg strong { font-weight: 700; color: #111827; }
+        .ai-msg hr { margin: 12px 0; border: 0; border-top: 1px solid #e5e7eb; }
+        .ai-msg ul { margin-left: 20px; list-style-type: disc; }
+        
+        [dir="rtl"] { font-family: 'Noto Sans Arabic', 'Inter', sans-serif; line-height: 1.8; font-size: 1.05rem; }
+    </style>
+</head>
+<body x-data="{ dropdownOpen: false }">
+
+    <!-- Top Navigation -->
+    <nav class="p-4 flex justify-between items-center bg-white/80 backdrop-blur-md sticky top-0 z-10 border-b border-gray-100">
+        <div class="flex items-center space-x-2 cursor-pointer" onclick="window.location.href='/'">
+            <div class="bg-blue-600 text-white p-1.5 rounded-lg">
+                <i class="fas fa-gavel text-sm"></i>
+            </div>
+            <span class="font-bold text-xl tracking-tight text-gray-900">AdalatAI</span>
+        </div>
+       
+        <div class="flex items-center space-x-4">
+            {% if user.is_authenticated %}
+                <div class="relative" @click.away="dropdownOpen = false">
+                    <button @click="dropdownOpen = !dropdownOpen" class="flex items-center space-x-3 focus:outline-none bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 hover:bg-gray-100 transition">
+                        <span class="text-sm font-medium text-gray-700">
+                            <i class="fas fa-user-circle text-blue-600 mr-1"></i> {{ user.username }}
+                        </span>
+                        <i class="fas fa-chevron-down text-gray-400 text-xs"></i>
+                    </button>
+                    <div x-show="dropdownOpen" class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-20">
+                        <a href="{% url 'profile_view' %}" class="block px-4 py-2 text-sm text-gray-700 hover:bg-blue-50">Profile</a>
+                        <div class="border-t my-1"></div>
+                        <a href="{% url 'logout' %}" class="block px-4 py-2 text-sm text-red-600 hover:bg-red-50">Logout</a>
+                    </div>
+                </div>
+            {% else %}
+                <a href="{% url 'signup_login' %}" class="bg-black text-white px-5 py-2.5 rounded-xl font-semibold text-sm hover:bg-gray-800 transition shadow-sm">Sign In</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <!-- Chat Area -->
+    <main id="chat-window" class="p-4 md:p-8">
+        <div id="welcome-msg" class="h-full flex flex-col items-center justify-center text-center space-y-4 py-20">
+            <div class="bg-blue-50 p-5 rounded-3xl mb-4">
+                <i class="fas fa-scale-balanced text-5xl text-blue-600"></i>
+            </div>
+            <h1 class="text-4xl font-bold text-gray-900 tracking-tight">Legal AI Assistant</h1>
+            <p class="text-gray-500 max-w-md text-lg">Upload an FIR or ask questions about Pakistan Penal Code (PPC).</p>
+        </div>
+
+        <div id="response-area" class="chat-container space-y-6 hidden pb-10"></div>
+    </main>
+
+    <!-- Input Footer -->
+    <footer class="p-4 bg-white border-t border-gray-100">
+        <div class="chat-container relative">
+            <!-- File Preview -->
+            <div id="preview-container" class="hidden absolute -top-16 left-0 bg-white border border-blue-100 rounded-xl p-2 shadow-lg flex items-center gap-3 z-20 fade-in">
+                <div class="w-10 h-10 bg-blue-50 rounded-lg overflow-hidden flex items-center justify-center">
+                    <img id="preview-img" src="" class="object-cover h-full w-full hidden">
+                    <i id="pdf-icon" class="fas fa-file-pdf text-red-500 hidden text-xl"></i>
+                </div>
+                <div class="pr-4">
+                    <p class="text-xs font-semibold text-gray-700 truncate max-w-[150px]" id="file-name-display"></p>
+                    <button onclick="removeFile()" class="text-red-500 text-[10px] font-bold uppercase tracking-wider hover:underline">Remove</button>
+                </div>
+            </div>
+
+            <div class="glass-input rounded-2xl flex items-center p-1.5 pl-4">
+                <label for="fir-upload" class="cursor-pointer p-3 text-gray-400 hover:text-blue-600 transition">
+                    <i class="fa-solid fa-paperclip text-xl"></i>
+                    <input type="file" id="fir-upload" class="hidden" accept="image/*,.pdf" onchange="handleFileUpload(event)">
+                </label>
+                
+                <input type="text" id="user-input" placeholder="Type your legal query here..." class="flex-1 px-4 py-3 focus:outline-none text-gray-700 bg-transparent">
+                
+                <button onclick="processQuery()" id="send-btn" class="bg-blue-600 text-white w-12 h-12 rounded-xl flex items-center justify-center hover:bg-blue-700 transition shadow-md">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+            <p class="text-[10px] text-center text-gray-400 mt-3 uppercase tracking-widest font-medium">Verified PPC Legal Data System</p>
+        </div>
+    </footer>
+
+    <script>
+        const isAuthenticated = {% if user.is_authenticated %}true{% else %}false{% endif %};
+        let uploadedFile = null;
+        let isProcessing = false;
+
+        function formatText(text) {
+            // Professional formatting: Bold, Line breaks, Bullets
+            return text
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/•/g, '<br>•')
+                .replace(/\n/g, '<br>');
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                uploadedFile = file;
+                const reader = new FileReader();
+                const previewImg = document.getElementById('preview-img');
+                const pdfIcon = document.getElementById('pdf-icon');
+                
+                document.getElementById('file-name-display').textContent = file.name;
+                document.getElementById('preview-container').classList.remove('hidden');
+
+                if (file.type.startsWith('image/')) {
+                    reader.onload = (e) => { previewImg.src = e.target.result; previewImg.classList.remove('hidden'); };
+                    reader.readAsDataURL(file);
+                    pdfIcon.classList.add('hidden');
+                } else {
+                    pdfIcon.classList.remove('hidden');
+                    previewImg.classList.add('hidden');
+                }
+            }
+        }
+
+        function removeFile() {
+            uploadedFile = null;
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('fir-upload').value = '';
+        }
+
+        function addMessage(text, isUser, isRTL = false) {
+            document.getElementById('welcome-msg').classList.add('hidden');
+            const area = document.getElementById('response-area');
+            area.classList.remove('hidden');
+
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex ${isUser ? 'justify-end' : 'justify-start'} mb-4 fade-in`;
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `message px-5 py-3 ${isUser ? 'user-msg' : 'ai-msg'}`;
+            if (isRTL) msgDiv.setAttribute('dir', 'rtl');
+            
+            msgDiv.innerHTML = isUser ? text : formatText(text);
+            wrapper.appendChild(msgDiv);
+            area.appendChild(wrapper);
+            
+            const chatWin = document.getElementById('chat-window');
+            chatWin.scrollTop = chatWin.scrollHeight;
+            return msgDiv;
+        }
+
+        async function processQuery() {
+            if (!isAuthenticated) { alert('Please login first'); return; }
+            const input = document.getElementById('user-input');
+            const query = input.value.trim();
+            if (!query && !uploadedFile) return;
+            if (isProcessing) return;
+
+            isProcessing = true;
+            if (query) addMessage(query, true);
+            else addMessage("Analyzing uploaded document...", true);
+
+            const aiMsgDiv = addMessage("Thinking...", false);
+            let fullContent = "";
+            input.value = "";
+
+            const formData = new FormData();
+            if (query) formData.append('query', query);
+            if (uploadedFile) formData.append('fir_image', uploadedFile);
+
+            try {
+                const response = await fetch('/api/analyze-stream/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': '{{ csrf_token }}' },
+                    body: formData
+                });
+
+                const reader = response.body.getReader();
+                const decoder = new TextDecoder();
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+
+                    const chunk = decoder.decode(value);
+                    const lines = chunk.split('\n');
+
+                    for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                            try {
+                                const data = JSON.parse(line.slice(6));
+                                if (data.type === 'language' && data.lang === 'urdu') {
+                                    aiMsgDiv.setAttribute('dir', 'rtl');
+                                } else if (data.type === 'token') {
+                                    fullContent += data.content;
+                                    aiMsgDiv.innerHTML = formatText(fullContent);
+                                } else if (data.type === 'lawyers' && data.lawyers.length > 0) {
+                                    renderLawyers(data.lawyers);
+                                }
+                            } catch (e) {}
+                        }
+                    }
+                    const chatWin = document.getElementById('chat-window');
+                    chatWin.scrollTop = chatWin.scrollHeight;
+                }
+            } catch (err) {
+                aiMsgDiv.innerHTML = "Error connecting to server.";
+            }
+            isProcessing = false;
+            removeFile();
+        }
+
+        function renderLawyers(lawyers) {
+            const area = document.getElementById('response-area');
+            let html = `<div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3 fade-in">`;
+            lawyers.forEach(l => {
+                html += `
+                <a href="/lawyer/${l.id}/" class="bg-white border border-gray-200 p-4 rounded-2xl hover:border-blue-400 transition shadow-sm flex items-center space-x-4">
+                    <div class="bg-blue-50 h-10 w-10 rounded-full flex items-center justify-center text-blue-600 font-bold">${l.name[0]}</div>
+                    <div class="flex-1">
+                        <h4 class="text-sm font-bold text-gray-900">${l.name}</h4>
+                        <p class="text-[11px] text-gray-500">${l.specialty}</p>
+                    </div>
+                    <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                </a>`;
+            });
+            html += `</div>`;
+            area.insertAdjacentHTML('beforeend', html);
+        }
+
+        document.getElementById('user-input').addEventListener('keypress', (e) => { if(e.key === 'Enter') processQuery(); });
+    </script>
+</body>
+</html>

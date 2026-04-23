@@ -1,0 +1,33 @@
+[project]
+name = "ai-legal-support-system"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "chromadb>=1.5.5",
+    "django>=5.2.12",
+    "django-cors-headers>=4.9.0",
+    "djangorestframework>=3.17.1",
+    "easyocr>=1.7.2",
+    "faiss-cpu>=1.13.2",
+    "groq>=1.1.2",
+    "gunicorn>=25.3.0",
+    "huggingface-hub>=1.8.0",
+    "langchain>=1.2.14",
+    "langchain-community>=0.4.1",
+    "langchain-huggingface>=1.2.1",
+    "numpy>=2.4.4",
+    "openai>=2.30.0",
+    "pandas>=3.0.2",
+    "pdfplumber>=0.11.9",
+    "pillow>=12.2.0",
+    "pymupdf>=1.27.2.2",
+    "pypdf>=6.9.2",
+    "pytesseract==0.3.10",
+    "python-dotenv>=1.2.2",
+    "requests>=2.33.1",
+    "sentence-transformers>=5.3.0",
+    "sseclient-py>=1.9.0",
+    "whitenoise>=6.12.0",
+]

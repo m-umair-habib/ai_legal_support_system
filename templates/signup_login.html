@@ -1,0 +1,931 @@
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdalatAI | PPC Legal Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .glass-input { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .auth-overlay { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); transition: all 0.5s ease-in-out; }
+        .lawyer-only { display: none; }
+        .active-tab { border-bottom: 2px solid #2563eb; color: #2563eb; }
+        #main-app { display: none; }
+        .error-message { background-color: #fee2e2; color: #dc2626; }
+        .success-message { background-color: #dcfce7; color: #16a34a; }
+        
+        /* Input focus styles */
+        input:focus, select:focus {
+            outline: none;
+            ring: 2px solid #3b82f6;
+        }
+        
+        /* Smooth transitions */
+        .transition-smooth {
+            transition: all 0.2s ease;
+        }
+        
+        /* Custom scrollbar */
+        .overflow-y-auto::-webkit-scrollbar {
+            width: 4px;
+        }
+        
+        .overflow-y-auto::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+        
+        .overflow-y-auto::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="h-screen w-full relative">
+
+    <!-- 1. AUTHENTICATION OVERLAY -->
+    <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4 auth-overlay">
+        <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col md:flex-row">
+            <!-- Left Branding Side -->
+            <div class="md:w-1/3 bg-slate-900 p-8 text-white flex flex-col justify-between">
+                <div>
+                    <i class="fas fa-gavel text-4xl mb-4"></i>
+                    <h2 class="text-2xl font-bold">AdalatAI</h2>
+                    <p class="text-slate-400 text-sm mt-2">Pakistan's first AI-powered PPC legal expert system.</p>
+                </div>
+                <div class="text-xs text-slate-500">© 2025 Digital Justice Lab</div>
+            </div>
+
+            <!-- Right Form Side -->
+            <div class="md:w-2/3 p-8 max-h-[90vh] overflow-y-auto">
+                <div class="flex space-x-6 mb-6 border-b">
+                    <button onclick="switchAuthTab('login')" id="tab-login" class="pb-2 font-semibold active-tab">Login</button>
+                    <button onclick="switchAuthTab('signup')" id="tab-signup" class="pb-2 font-semibold text-gray-400">Sign Up</button>
+                </div>
+
+                <!-- Display Django Messages -->
+                {% if messages %}
+                <div class="mb-4 space-y-2">
+                    {% for message in messages %}
+                    <div class="p-3 rounded-xl {% if message.tags == 'error' %}bg-red-100 text-red-700 border-l-4 border-red-500{% else %}bg-green-100 text-green-700 border-l-4 border-green-500{% endif %}">
+                        <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %} mr-2"></i>
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% endif %}
+
+                <!-- Login Form -->
+                <form id="login-form" class="space-y-4" method="POST" action="">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input type="email" name="email" placeholder="you@example.com" required 
+                               class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" name="password" placeholder="••••••••" required 
+                               class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                    </div>
+                    <input type="hidden" name="login" value="1">
+                    
+                    <!-- Forgot Password Link -->
+                    <div class="text-right">
+                        <a href="{% url 'forgot_password' %}" class="text-sm text-blue-600 hover:text-blue-800 hover:underline transition">
+                            <i class="fas fa-key mr-1"></i> Forgot Password?
+                        </a>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Enter System
+                    </button>
+                </form>
+
+                <!-- Signup Form -->
+                <form id="signup-form" class="hidden space-y-4" method="POST" action="">
+                    {% csrf_token %}
+                    <div class="flex bg-gray-100 p-1 rounded-lg mb-4">
+                        <button type="button" onclick="setRole('client')" id="role-user" class="flex-1 py-2 rounded-md bg-white shadow-sm text-sm font-bold transition">Client</button>
+                        <button type="button" onclick="setRole('lawyer')" id="role-lawyer" class="flex-1 py-2 rounded-md text-sm font-bold text-gray-500 transition">Lawyer</button>
+                    </div>
+                    <input type="hidden" name="role" id="user-role" value="client">
+                    <input type="hidden" name="signup" value="1">
+                    
+                    <!-- Common Fields -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Full Name</label>
+                            <input type="text" name="full_name" placeholder="Full Name" required 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">CNIC</label>
+                            <input type="text" name="cnic" placeholder="00000-0000000-0" required 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Username</label>
+                        <input type="text" name="username" placeholder="Username" required 
+                               class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Email Address</label>
+                        <input type="email" name="email" placeholder="you@example.com" required 
+                               class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Contact Number</label>
+                            <input type="tel" name="contact" placeholder="03XXXXXXXXX" required 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Password</label>
+                            <input type="password" name="password" placeholder="Minimum 6 characters" required 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                    </div>
+
+                    <!-- Lawyer Specific Fields -->
+                    <div id="lawyer-fields" class="lawyer-only space-y-3 pt-3 border-t">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">License Number</label>
+                                <input type="text" name="license_number" placeholder="License Number" 
+                                       class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Location (City)</label>
+                                <input type="text" name="location" placeholder="e.g., Lahore, Karachi" 
+                                       class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Years of Experience</label>
+                                <select name="years_experience" class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                    <option value="1-5 Years">1-5 Years</option>
+                                    <option value="5-10 Years">5-10 Years</option>
+                                    <option value="10+ Years">10+ Years</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Languages</label>
+                                <input type="text" name="languages" placeholder="e.g., Urdu, English, Punjabi" 
+                                       class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Speciality</label>
+                            <input type="text" name="speciality" placeholder="e.g., Criminal Law, Murder Cases" 
+                                   class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <label class="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" name="online_availability" checked class="w-4 h-4 text-blue-600"> 
+                            <span>Available for Online Consultation</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-black transition shadow-md mt-2">
+                        <i class="fas fa-user-plus mr-2"></i> Create Account
+                    </button>
+                    
+                    <p class="text-center text-xs text-gray-400 mt-4">
+                        By signing up, you agree to our Terms of Service and Privacy Policy.
+                    </p>
+                </form>
+                
+                <!-- Resend Verification Link (shown after signup) -->
+                <div class="mt-4 text-center text-sm">
+                    <a href="{% url 'resend_verification' %}" class="text-blue-600 hover:text-blue-800 text-sm">
+                        <i class="fas fa-envelope mr-1"></i> Resend verification email?
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MAIN APPLICATION SCREEN (Hidden until login via Django) -->
+    <div id="main-app" class="h-screen flex flex-col">
+        <!-- Top Nav -->
+        <nav class="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
+            <div class="flex items-center space-x-2">
+                <div class="bg-blue-600 text-white p-1.5 rounded-lg"><i class="fas fa-gavel"></i></div>
+                <span class="font-bold text-xl">AdalatAI</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="user-welcome" class="hidden md:block text-sm font-medium text-gray-600">Welcome, Counsel</span>
+                <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center cursor-pointer border border-blue-200">
+                    <i class="fas fa-user text-gray-500"></i>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Chat Area -->
+        <main id="chat-window" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+            <div id="welcome-msg" class="h-full flex flex-col items-center justify-center text-center pb-20">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">Legal Expert System</h1>
+                <p class="text-gray-500">Upload FIR or type your case query below.</p>
+            </div>
+
+            <!-- Dynamic Responses Area -->
+            <div id="response-area" class="max-w-3xl mx-auto space-y-8 hidden">
+                <div class="flex justify-end"><div id="user-display-msg" class="bg-blue-600 text-white rounded-2xl px-6 py-3 max-w-[80%] shadow-lg"></div></div>
+                <div class="flex justify-start space-x-4">
+                    <div class="bg-white border p-6 rounded-2xl shadow-sm w-full">
+                        <h3 class="font-bold text-gray-900 mb-3"><i class="fas fa-shield-halved text-blue-600 mr-2"></i> PPC Legal Analysis</h3>
+                        <div id="legal-text" class="text-gray-600 space-y-4"></div>
+                        <div id="lawyer-results" class="mt-8">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase mb-4">Recommended Experts for your case</h4>
+                            <div id="lawyer-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Search Bar -->
+        <footer class="p-4 bg-white border-t">
+            <div class="max-w-3xl mx-auto relative">
+                <!-- FIR Preview -->
+                <div id="preview-container" class="hidden absolute -top-16 left-0 bg-white border rounded-xl p-2 shadow-xl flex items-center space-x-2">
+                    <img id="preview-img" src="" class="w-10 h-10 object-cover rounded">
+                    <span class="text-xs font-medium">FIR_Image.jpg</span>
+                    <button onclick="removeImage()" class="text-red-400 p-1"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="glass-input rounded-2xl flex items-center p-2">
+                    <label for="fir-upload" class="cursor-pointer p-3 text-gray-400 hover:text-blue-600">
+                        <i class="fa-solid fa-image text-xl"></i>
+                        <input type="file" id="fir-upload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+                    </label>
+                    <input type="text" id="user-input" placeholder="Type case details or query..." class="flex-1 px-2 outline-none text-gray-700 bg-transparent">
+                    <button onclick="processQuery()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition">
+                        Analyze
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // --- AUTH LOGIC ---
+        function switchAuthTab(type) {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const tabLogin = document.getElementById('tab-login');
+            const tabSignup = document.getElementById('tab-signup');
+
+            if(type === 'login') {
+                loginForm.classList.remove('hidden');
+                signupForm.classList.add('hidden');
+                tabLogin.classList.add('active-tab');
+                tabSignup.classList.remove('active-tab');
+            } else {
+                loginForm.classList.add('hidden');
+                signupForm.classList.remove('hidden');
+                tabSignup.classList.add('active-tab');
+                tabLogin.classList.remove('active-tab');
+            }
+        }
+
+        function setRole(role) {
+            const userBtn = document.getElementById('role-user');
+            const lawyerBtn = document.getElementById('role-lawyer');
+            const lawyerFields = document.getElementById('lawyer-fields');
+            const roleInput = document.getElementById('user-role');
+
+            if(role === 'lawyer') {
+                lawyerBtn.className = "flex-1 py-2 rounded-md bg-white shadow-sm text-sm font-bold text-blue-600";
+                userBtn.className = "flex-1 py-2 rounded-md text-sm font-bold text-gray-500";
+                lawyerFields.style.display = 'block';
+                roleInput.value = 'lawyer';
+            } else {
+                userBtn.className = "flex-1 py-2 rounded-md bg-white shadow-sm text-sm font-bold text-blue-600";
+                lawyerBtn.className = "flex-1 py-2 rounded-md text-sm font-bold text-gray-500";
+                lawyerFields.style.display = 'none';
+                roleInput.value = 'client';
+            }
+        }
+
+        // --- CHAT & FIR LOGIC ---
+        let uploadedFile = null;
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                // Check file size (max 5MB)
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File too large! Please upload image less than 5MB.');
+                    return;
+                }
+                // Check file type
+                if (!file.type.startsWith('image/')) {
+                    alert('Please upload an image file (JPG, PNG, etc.)');
+                    return;
+                }
+                uploadedFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removeImage() {
+            uploadedFile = null;
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('fir-upload').value = '';
+        }
+
+        function processQuery() {
+            const input = document.getElementById('user-input').value;
+            if(!input && !uploadedFile) {
+                alert('Please enter a query or upload an FIR image.');
+                return;
+            }
+
+            document.getElementById('welcome-msg').classList.add('hidden');
+            const responseArea = document.getElementById('response-area');
+            responseArea.classList.remove('hidden');
+            document.getElementById('user-display-msg').innerText = input || "Analyzing FIR image...";
+            
+            document.getElementById('user-input').value = '';
+            removeImage();
+
+            // Show loading state
+            const legalText = document.getElementById('legal-text');
+            legalText.innerHTML = `
+                <div class="flex items-center justify-center space-x-2 py-8">
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                    <span class="ml-2 text-gray-500">AI is analyzing Pakistan Penal Code...</span>
+                </div>
+            `;
+
+            setTimeout(() => {
+                legalText.innerHTML = `
+                    <div class="law-section">
+                        <h4>Section 302: Punishment of qatl-i-amd (Murder)</h4>
+                        <p>Whoever commits qatl-i-amd (intentional murder) shall be punished with death or imprisonment for life, and shall also be liable to fine.</p>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-xl border-l-4 border-blue-500 mt-4">
+                        <h4 class="font-bold text-blue-900">📋 How to Handle This Case:</h4>
+                        <p class="text-sm mt-2"><strong>Immediate Actions:</strong> Call 15, preserve crime scene, seek medical help.</p>
+                        <p class="text-sm mt-1"><strong>Legal Steps:</strong> File FIR, collect evidence, hire criminal lawyer.</p>
+                    </div>
+                `;
+
+                // Mock Lawyers Data
+                const lawyers = [
+                    { id: 1, name: "Adv. Ahmed Hassan", exp: "12 yrs", city: "Lahore", tag: "Criminal Expert" },
+                    { id: 2, name: "Barrister Fatima", exp: "8 yrs", city: "Islamabad", tag: "PPC Specialist" },
+                    { id: 3, name: "Adv. Muhammad Ali", exp: "15 yrs", city: "Karachi", tag: "Criminal Defense" }
+                ];
+
+                document.getElementById('lawyer-grid').innerHTML = lawyers.map(l => `
+                    <div class="lawyer-card bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer" onclick="window.location.href='/lawyer/${l.id}/'">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                ${l.name.charAt(0)}
+                            </div>
+                            <div class="flex-1">
+                                <h5 class="font-bold text-gray-900 text-sm">${l.name}</h5>
+                                <p class="text-xs text-blue-600 font-medium">${l.tag}</p>
+                                <p class="text-[10px] text-gray-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>${l.city} • <i class="fas fa-briefcase mr-1"></i>${l.exp}</p>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                        </div>
+                    </div>
+                `).join('');
+
+                const chatWindow = document.getElementById('chat-window');
+                chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: 'smooth' });
+            }, 1500);
+        }
+    </script>
+</body>
+</html> {% endcomment %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AdalatAI | PPC Legal Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; overflow: hidden; }
+        .glass-input { background: white; border: 1px solid #e2e8f0; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        .auth-overlay { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(12px); transition: all 0.5s ease-in-out; }
+        .lawyer-only { display: none; }
+        .active-tab { border-bottom: 2px solid #2563eb; color: #2563eb; }
+        #main-app { display: none; }
+        
+        /* Input focus styles */
+        input:focus, select:focus {
+            outline: none;
+            ring: 2px solid #3b82f6;
+        }
+        
+        /* Auto-hide message animation */
+        .message-auto-hide {
+            animation: slideIn 0.3s ease, fadeOutMsg 0.5s ease 4.5s forwards;
+        }
+        @keyframes slideIn {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes fadeOutMsg {
+            from { opacity: 1; transform: translateY(0); }
+            to { opacity: 0; transform: translateY(-20px); visibility: hidden; }
+        }
+        
+        /* Password strength indicator */
+        .strength-weak { background: #ef4444; }
+        .strength-medium { background: #f59e0b; }
+        .strength-strong { background: #10b981; }
+    </style>
+</head>
+<body class="h-screen w-full relative">
+
+    <!-- 1. AUTHENTICATION OVERLAY -->
+    <div id="auth-screen" class="fixed inset-0 z-50 flex items-center justify-center p-4 auth-overlay">
+        <div class="bg-white w-full max-w-2xl rounded-3xl shadow-2xl border border-gray-100 overflow-hidden flex flex-col md:flex-row">
+            <!-- Left Branding Side -->
+            <div class="md:w-1/3 bg-slate-900 p-8 text-white flex flex-col justify-between">
+                <div>
+                    <i class="fas fa-gavel text-4xl mb-4"></i>
+                    <h2 class="text-2xl font-bold">AdalatAI</h2>
+                    <p class="text-slate-400 text-sm mt-2">Pakistan's first AI-powered PPC legal expert system.</p>
+                </div>
+                <div class="text-xs text-slate-500"><footer>
+  &copy; <span id="year"></span> AdalatAI
+</footer>
+
+<script>
+  document.getElementById("year").textContent = new Date().getFullYear();
+</script></div>
+            </div>
+
+            <!-- Right Form Side -->
+            <div class="md:w-2/3 p-8 max-h-[90vh] overflow-y-auto">
+                <div class="flex space-x-6 mb-6 border-b">
+                    <button onclick="switchAuthTab('login')" id="tab-login" class="pb-2 font-semibold active-tab">Login</button>
+                    <button onclick="switchAuthTab('signup')" id="tab-signup" class="pb-2 font-semibold text-gray-400">Sign Up</button>
+                </div>
+
+                <!-- Display Django Messages - Auto hide -->
+                {% if messages %}
+                <div id="message-container" class="mb-4 space-y-2">
+                    {% for message in messages %}
+                    <div class="p-3 rounded-xl {% if message.tags == 'error' %}bg-red-100 text-red-700 border-l-4 border-red-500{% else %}bg-green-100 text-green-700 border-l-4 border-green-500{% endif %} message-auto-hide">
+                        <i class="fas {% if message.tags == 'error' %}fa-exclamation-circle{% else %}fa-check-circle{% endif %} mr-2"></i>
+                        {{ message }}
+                    </div>
+                    {% endfor %}
+                </div>
+                <script>
+                    setTimeout(function() {
+                        const msgContainer = document.getElementById('message-container');
+                        if (msgContainer) msgContainer.style.display = 'none';
+                    }, 5000);
+                </script>
+                {% endif %}
+
+                <!-- Login Form -->
+                <form id="login-form" class="space-y-4" method="POST" action="">
+                    {% csrf_token %}
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                        <input type="email" name="email" placeholder="you@example.com" required 
+                               class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <input type="password" name="password" placeholder="••••••••" required 
+                               class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition">
+                    </div>
+                    <input type="hidden" name="login" value="1">
+                    
+                    <!-- Forgot Password Link -->
+                    <div class="text-right">
+                        <a href="{% url 'forgot_password' %}" class="text-sm text-blue-600 hover:text-blue-800 hover:underline transition">
+                            <i class="fas fa-key mr-1"></i> Forgot Password?
+                        </a>
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-blue-600 text-white py-3 rounded-xl font-bold hover:bg-blue-700 transition shadow-md">
+                        <i class="fas fa-sign-in-alt mr-2"></i> Enter System
+                    </button>
+                </form>
+
+                <!-- Signup Form -->
+                <form id="signup-form" class="hidden space-y-4" method="POST" action="" onsubmit="return validateSignupForm()">
+                    {% csrf_token %}
+                    <div class="flex bg-gray-100 p-1 rounded-lg mb-4">
+                        <button type="button" onclick="setRole('client')" id="role-user" class="flex-1 py-2 rounded-md bg-white shadow-sm text-sm font-bold transition">Client</button>
+                        <button type="button" onclick="setRole('lawyer')" id="role-lawyer" class="flex-1 py-2 rounded-md text-sm font-bold text-gray-500 transition">Lawyer</button>
+                    </div>
+                    <input type="hidden" name="role" id="user-role" value="client">
+                    <input type="hidden" name="signup" value="1">
+                    
+                    <!-- Common Fields -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Full Name</label>
+                            <input type="text" name="full_name" id="full_name" placeholder="Full Name" required 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">CNIC</label>
+                            <input type="text" name="cnic" id="cnic" placeholder="00000-0000000-0" required 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Username</label>
+                        <input type="text" name="username" id="username" placeholder="Username" required 
+                               class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Email Address</label>
+                        <input type="email" name="email" id="email" placeholder="you@example.com" required 
+                               class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Contact Number</label>
+                            <input type="tel" name="contact" id="contact" placeholder="03XXXXXXXXX" required 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Password</label>
+                            <input type="password" name="password" id="password" placeholder="Minimum 8 characters" required 
+                                   class="w-full p-3 rounded-xl border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none text-sm"
+                                   onkeyup="checkPasswordStrength()">
+                            <div id="password-strength" class="mt-1"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-xs text-gray-500" id="password-requirements">
+                        <p class="font-semibold mb-1">Password must contain:</p>
+                        <ul class="list-disc list-inside space-y-0.5">
+                            <li id="req-length" class="text-gray-400">✓ At least 8 characters</li>
+                            <li id="req-upper" class="text-gray-400">✓ At least one uppercase letter</li>
+                            <li id="req-lower" class="text-gray-400">✓ At least one lowercase letter</li>
+                            <li id="req-number" class="text-gray-400">✓ At least one number</li>
+                            <li id="req-special" class="text-gray-400">✓ At least one special character (!@#$%^&*)</li>
+                        </ul>
+                    </div>
+
+                    <!-- Lawyer Specific Fields -->
+                    <div id="lawyer-fields" class="lawyer-only space-y-3 pt-3 border-t">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">License Number</label>
+                                <input type="text" name="license_number" id="license_number" placeholder="License Number" 
+                                       class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Location (City)</label>
+                                <input type="text" name="location" id="location" placeholder="e.g., Lahore, Karachi" 
+                                       class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Years of Experience</label>
+                                <select name="years_experience" class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                                    <option value="1-5 Years">1-5 Years</option>
+                                    <option value="5-10 Years">5-10 Years</option>
+                                    <option value="10+ Years">10+ Years</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs text-gray-500 mb-1">Languages</label>
+                                <input type="text" name="languages" id="languages" placeholder="e.g., Urdu, English, Punjabi" 
+                                       class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Speciality</label>
+                            <input type="text" name="speciality" id="speciality" placeholder="e.g., Criminal Law, Murder Cases" 
+                                   class="w-full p-3 rounded-xl border border-gray-300 bg-blue-50 focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <label class="flex items-center space-x-2 text-sm text-gray-600 cursor-pointer">
+                            <input type="checkbox" name="online_availability" checked class="w-4 h-4 text-blue-600"> 
+                            <span>Available for Online Consultation</span>
+                        </label>
+                    </div>
+
+                    <button type="submit" class="w-full bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-black transition shadow-md mt-2">
+                        <i class="fas fa-user-plus mr-2"></i> Create Account
+                    </button>
+                    
+                    <p class="text-center text-xs text-gray-400 mt-4">
+                        By signing up, you agree to our Terms of Service and Privacy Policy.
+                    </p>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. MAIN APPLICATION SCREEN (Hidden until login via Django) -->
+    <div id="main-app" class="h-screen flex flex-col">
+        <!-- Top Nav -->
+        <nav class="p-4 flex justify-between items-center bg-white border-b sticky top-0 z-10">
+            <div class="flex items-center space-x-2">
+                <div class="bg-blue-600 text-white p-1.5 rounded-lg"><i class="fas fa-gavel"></i></div>
+                <span class="font-bold text-xl">AdalatAI</span>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span id="user-welcome" class="hidden md:block text-sm font-medium text-gray-600">Welcome, Counsel</span>
+                <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center cursor-pointer border border-blue-200">
+                    <i class="fas fa-user text-gray-500"></i>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Chat Area -->
+        <main id="chat-window" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8">
+            <div id="welcome-msg" class="h-full flex flex-col items-center justify-center text-center pb-20">
+                <h1 class="text-4xl font-bold text-gray-800 mb-2">Legal Expert System</h1>
+                <p class="text-gray-500">Upload FIR or type your case query below.</p>
+            </div>
+
+            <!-- Dynamic Responses Area -->
+            <div id="response-area" class="max-w-3xl mx-auto space-y-8 hidden">
+                <div class="flex justify-end"><div id="user-display-msg" class="bg-blue-600 text-white rounded-2xl px-6 py-3 max-w-[80%] shadow-lg"></div></div>
+                <div class="flex justify-start space-x-4">
+                    <div class="bg-white border p-6 rounded-2xl shadow-sm w-full">
+                        <h3 class="font-bold text-gray-900 mb-3"><i class="fas fa-shield-halved text-blue-600 mr-2"></i> PPC Legal Analysis</h3>
+                        <div id="legal-text" class="text-gray-600 space-y-4"></div>
+                        <div id="lawyer-results" class="mt-8">
+                            <h4 class="text-xs font-bold text-gray-400 uppercase mb-4">Recommended Experts for your case</h4>
+                            <div id="lawyer-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Search Bar -->
+        <footer class="p-4 bg-white border-t">
+            <div class="max-w-3xl mx-auto relative">
+                <!-- FIR Preview -->
+                <div id="preview-container" class="hidden absolute -top-16 left-0 bg-white border rounded-xl p-2 shadow-xl flex items-center space-x-2">
+                    <img id="preview-img" src="" class="w-10 h-10 object-cover rounded">
+                    <span class="text-xs font-medium">FIR_Image.jpg</span>
+                    <button onclick="removeImage()" class="text-red-400 p-1"><i class="fas fa-times"></i></button>
+                </div>
+
+                <div class="glass-input rounded-2xl flex items-center p-2">
+                    <label for="fir-upload" class="cursor-pointer p-3 text-gray-400 hover:text-blue-600">
+                        <i class="fa-solid fa-image text-xl"></i>
+                        <input type="file" id="fir-upload" class="hidden" accept="image/*" onchange="handleFileUpload(event)">
+                    </label>
+                    <input type="text" id="user-input" placeholder="Type case details or query..." class="flex-1 px-2 outline-none text-gray-700 bg-transparent">
+                    <button onclick="processQuery()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold hover:bg-blue-700 transition">
+                        Analyze
+                    </button>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // --- AUTH LOGIC ---
+        function switchAuthTab(type) {
+            const loginForm = document.getElementById('login-form');
+            const signupForm = document.getElementById('signup-form');
+            const tabLogin = document.getElementById('tab-login');
+            const tabSignup = document.getElementById('tab-signup');
+
+            if(type === 'login') {
+                loginForm.classList.remove('hidden');
+                signupForm.classList.add('hidden');
+                tabLogin.classList.add('active-tab');
+                tabSignup.classList.remove('active-tab');
+            } else {
+                loginForm.classList.add('hidden');
+                signupForm.classList.remove('hidden');
+                tabSignup.classList.add('active-tab');
+                tabLogin.classList.remove('active-tab');
+            }
+        }
+
+        function setRole(role) {
+            const userBtn = document.getElementById('role-user');
+            const lawyerBtn = document.getElementById('role-lawyer');
+            const lawyerFields = document.getElementById('lawyer-fields');
+            const roleInput = document.getElementById('user-role');
+
+            if(role === 'lawyer') {
+                lawyerBtn.className = "flex-1 py-2 rounded-md bg-white shadow-sm text-sm font-bold text-blue-600";
+                userBtn.className = "flex-1 py-2 rounded-md text-sm font-bold text-gray-500";
+                lawyerFields.style.display = 'block';
+                roleInput.value = 'lawyer';
+            } else {
+                userBtn.className = "flex-1 py-2 rounded-md bg-white shadow-sm text-sm font-bold text-blue-600";
+                lawyerBtn.className = "flex-1 py-2 rounded-md text-sm font-bold text-gray-500";
+                lawyerFields.style.display = 'none';
+                roleInput.value = 'client';
+            }
+        }
+
+        // Password strength checker
+        function checkPasswordStrength() {
+            const password = document.getElementById('password').value;
+            
+            const requirements = {
+                length: password.length >= 8,
+                upper: /[A-Z]/.test(password),
+                lower: /[a-z]/.test(password),
+                number: /\d/.test(password),
+                special: /[!@#$%^&*(),.?":{}|<>]/.test(password)
+            };
+            
+            // Update requirement indicators
+            document.getElementById('req-length').className = requirements.length ? 'text-green-600' : 'text-gray-400';
+            document.getElementById('req-upper').className = requirements.upper ? 'text-green-600' : 'text-gray-400';
+            document.getElementById('req-lower').className = requirements.lower ? 'text-green-600' : 'text-gray-400';
+            document.getElementById('req-number').className = requirements.number ? 'text-green-600' : 'text-gray-400';
+            document.getElementById('req-special').className = requirements.special ? 'text-green-600' : 'text-gray-400';
+            
+            // Calculate strength
+            const strength = Object.values(requirements).filter(Boolean).length;
+            const strengthDiv = document.getElementById('password-strength');
+            
+            if (strength === 5) {
+                strengthDiv.innerHTML = '<div class="h-1 rounded-full strength-strong w-full mt-1"></div><p class="text-xs text-green-600 mt-1">Strong password!</p>';
+            } else if (strength >= 3) {
+                strengthDiv.innerHTML = '<div class="h-1 rounded-full strength-medium w-2/3 mt-1"></div><p class="text-xs text-orange-600 mt-1">Medium strength</p>';
+            } else if (strength > 0) {
+                strengthDiv.innerHTML = '<div class="h-1 rounded-full strength-weak w-1/3 mt-1"></div><p class="text-xs text-red-600 mt-1">Weak password</p>';
+            } else {
+                strengthDiv.innerHTML = '';
+            }
+        }
+
+        function validateSignupForm() {
+            const password = document.getElementById('password').value;
+            
+            // Check password strength
+            const hasLength = password.length >= 8;
+            const hasUpper = /[A-Z]/.test(password);
+            const hasLower = /[a-z]/.test(password);
+            const hasNumber = /\d/.test(password);
+            const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+            
+            if (!hasLength || !hasUpper || !hasLower || !hasNumber || !hasSpecial) {
+                alert('Please meet all password requirements:\n\n- At least 8 characters\n- One uppercase letter\n- One lowercase letter\n- One number\n- One special character (!@#$%^&*)');
+                return false;
+            }
+            
+            // Validate CNIC format
+            const cnic = document.getElementById('cnic').value;
+            const cnicPattern = /^\d{5}-\d{7}-\d$/;
+            if (!cnicPattern.test(cnic)) {
+                alert('CNIC must be in format: 00000-0000000-0');
+                return false;
+            }
+            
+            // Validate contact number
+            const contact = document.getElementById('contact').value;
+            const contactPattern = /^03\d{9}$/;
+            if (!contactPattern.test(contact)) {
+                alert('Contact number must be in format: 03XXXXXXXXX');
+                return false;
+            }
+            
+            // Validate lawyer fields if role is lawyer
+            const role = document.getElementById('user-role').value;
+            if (role === 'lawyer') {
+                const license = document.getElementById('license_number').value;
+                const location = document.getElementById('location').value;
+                const languages = document.getElementById('languages').value;
+                const speciality = document.getElementById('speciality').value;
+                
+                if (!license || !location || !languages || !speciality) {
+                    alert('All lawyer fields are required: License Number, Location, Languages, and Speciality');
+                    return false;
+                }
+            }
+            
+            return true;
+        }
+
+        // --- CHAT & FIR LOGIC ---
+        let uploadedFile = null;
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (file) {
+                if (file.size > 5 * 1024 * 1024) {
+                    alert('File too large! Please upload image less than 5MB.');
+                    return;
+                }
+                if (!file.type.startsWith('image/')) {
+                    alert('Please upload an image file (JPG, PNG, etc.)');
+                    return;
+                }
+                uploadedFile = file;
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    document.getElementById('preview-img').src = e.target.result;
+                    document.getElementById('preview-container').classList.remove('hidden');
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removeImage() {
+            uploadedFile = null;
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('fir-upload').value = '';
+        }
+
+        function processQuery() {
+            const input = document.getElementById('user-input').value;
+            if(!input && !uploadedFile) {
+                alert('Please enter a query or upload an FIR image.');
+                return;
+            }
+
+            document.getElementById('welcome-msg').classList.add('hidden');
+            const responseArea = document.getElementById('response-area');
+            responseArea.classList.remove('hidden');
+            document.getElementById('user-display-msg').innerText = input || "Analyzing FIR image...";
+            
+            document.getElementById('user-input').value = '';
+            removeImage();
+
+            const legalText = document.getElementById('legal-text');
+            legalText.innerHTML = `
+                <div class="flex items-center justify-center space-x-2 py-8">
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-pulse"></div>
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.2s"></div>
+                    <div class="w-3 h-3 bg-blue-600 rounded-full animate-pulse" style="animation-delay: 0.4s"></div>
+                    <span class="ml-2 text-gray-500">AI is analyzing Pakistan Penal Code...</span>
+                </div>
+            `;
+
+            setTimeout(() => {
+                legalText.innerHTML = `
+                    <div class="law-section">
+                        <h4>Section 302: Punishment of qatl-i-amd (Murder)</h4>
+                        <p>Whoever commits qatl-i-amd (intentional murder) shall be punished with death or imprisonment for life, and shall also be liable to fine.</p>
+                    </div>
+                    <div class="bg-blue-50 p-4 rounded-xl border-l-4 border-blue-500 mt-4">
+                        <h4 class="font-bold text-blue-900">📋 How to Handle This Case:</h4>
+                        <p class="text-sm mt-2"><strong>Immediate Actions:</strong> Call 15, preserve crime scene, seek medical help.</p>
+                        <p class="text-sm mt-1"><strong>Legal Steps:</strong> File FIR, collect evidence, hire criminal lawyer.</p>
+                    </div>
+                `;
+
+                const lawyers = [
+                    { id: 1, name: "Adv. Ahmed Hassan", exp: "12 yrs", city: "Lahore", tag: "Criminal Expert" },
+                    { id: 2, name: "Barrister Fatima", exp: "8 yrs", city: "Islamabad", tag: "PPC Specialist" },
+                    { id: 3, name: "Adv. Muhammad Ali", exp: "15 yrs", city: "Karachi", tag: "Criminal Defense" }
+                ];
+
+                document.getElementById('lawyer-grid').innerHTML = lawyers.map(l => `
+                    <div class="lawyer-card bg-white p-4 rounded-xl border border-gray-100 shadow-sm hover:shadow-md transition cursor-pointer" onclick="window.location.href='/lawyer/${l.id}/'">
+                        <div class="flex items-center space-x-3">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                                ${l.name.charAt(0)}
+                            </div>
+                            <div class="flex-1">
+                                <h5 class="font-bold text-gray-900 text-sm">${l.name}</h5>
+                                <p class="text-xs text-blue-600 font-medium">${l.tag}</p>
+                                <p class="text-[10px] text-gray-400 mt-1"><i class="fas fa-map-marker-alt mr-1"></i>${l.city} • <i class="fas fa-briefcase mr-1"></i>${l.exp}</p>
+                            </div>
+                            <i class="fas fa-chevron-right text-gray-300 text-xs"></i>
+                        </div>
+                    </div>
+                `).join('');
+
+                const chatWindow = document.getElementById('chat-window');
+                chatWindow.scrollTo({ top: chatWindow.scrollHeight, behavior: 'smooth' });
+            }, 1500);
+        }
+    </script>
+</body>
+</html>

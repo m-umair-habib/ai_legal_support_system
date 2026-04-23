@@ -1,0 +1,305 @@
+{% comment %} <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ lawyer.name }} | AdalatAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <div class="max-w-4xl mx-auto py-8 px-4">
+        
+        <!-- Back Button -->
+        <button onclick="goBackToDashboard()" 
+                class="inline-flex items-center text-blue-600 hover:text-blue-800 mb-8 font-medium transition">
+            <i class="fas fa-arrow-left mr-2"></i> 
+            Back to Dashboard & Chat
+        </button>
+
+        <!-- Lawyer Profile Card -->
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+            
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-blue-700 to-indigo-700 px-8 py-10 text-white">
+                <div class="flex items-center gap-5">
+                    <div class="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-5xl font-bold border border-white/30">
+                        {{ lawyer.name|slice:":1" }}
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold">Adv. {{ lawyer.name }}</h1>
+                        <p class="text-blue-100 mt-1 text-lg">{{ lawyer.specialty }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="p-8">
+                <div class="grid md:grid-cols-2 gap-10">
+                    
+                    <!-- Left: Professional Info -->
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800 mb-5 flex items-center gap-2">
+                            <i class="fas fa-briefcase text-blue-600"></i> Professional Details
+                        </h2>
+                        <div class="space-y-5">
+                            <div class="flex gap-4">
+                                <i class="fas fa-id-card text-blue-500 mt-1 text-xl"></i>
+                                <div>
+                                    <p class="text-xs text-gray-500 tracking-widest">LICENSE NUMBER</p>
+                                    <p class="font-medium text-gray-800">{{ lawyer.license_number|default:"Not Available" }}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <i class="fas fa-map-marker-alt text-blue-500 mt-1 text-xl"></i>
+                                <div>
+                                    <p class="text-xs text-gray-500 tracking-widest">LOCATION</p>
+                                    <p class="font-medium text-gray-800">{{ lawyer.location|default:"Pakistan" }}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <i class="fas fa-clock text-blue-500 mt-1 text-xl"></i>
+                                <div>
+                                    <p class="text-xs text-gray-500 tracking-widest">EXPERIENCE</p>
+                                    <p class="font-medium text-gray-800">{{ lawyer.experience|default:"N/A" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Contact Info -->
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800 mb-5 flex items-center gap-2">
+                            <i class="fas fa-address-book text-green-600"></i> Contact Information
+                        </h2>
+                        
+                        {% if show_contact %}
+                            <div class="space-y-5">
+                                <div class="flex gap-4">
+                                    <i class="fas fa-phone text-green-500 mt-1 text-xl"></i>
+                                    <div>
+                                        <p class="text-xs text-gray-500 tracking-widest">PHONE</p>
+                                        <a href="tel:{{ lawyer.phone }}" class="font-medium text-gray-800 hover:text-green-600">
+                                            {{ lawyer.phone|default:"Not Available" }}
+                                        </a>
+                                    </div>
+                                </div>
+                                <div class="flex gap-4">
+                                    <i class="fas fa-envelope text-green-500 mt-1 text-xl"></i>
+                                    <div>
+                                        <p class="text-xs text-gray-500 tracking-widest">EMAIL</p>
+                                        <a href="mailto:{{ lawyer.email }}" class="font-medium text-gray-800 hover:text-green-600">
+                                            {{ lawyer.email|default:"Not Available" }}
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+                                <i class="fas fa-lock text-amber-500 text-4xl mb-3"></i>
+                                <p class="text-gray-700 font-medium">Contact details are private</p>
+                                <p class="text-sm text-gray-500 mt-1">Login to view phone number and email</p>
+                                <a href="{% url 'signup_login' %}" 
+                                   class="mt-4 inline-block bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 transition">
+                                    Login Now
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Practice Areas -->
+                <div class="mt-10 pt-8 border-t">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Practice Areas</h2>
+                    <div class="flex flex-wrap gap-2">
+                        {% for spec in lawyer.specialty_list %}
+                            <span class="bg-blue-100 text-blue-700 px-4 py-2 rounded-2xl text-sm font-medium">
+                                {{ spec }}
+                            </span>
+                        {% empty %}
+                            <span class="text-gray-500">General Practice</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                {% if show_contact and lawyer.phone %}
+                <div class="mt-10 flex flex-col sm:flex-row gap-4">
+                    <a href="tel:{{ lawyer.phone }}" 
+                       class="flex-1 bg-green-600 hover:bg-green-700 text-white text-center py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition">
+                        <i class="fas fa-phone"></i> Call Now
+                    </a>
+                    <a href="mailto:{{ lawyer.email }}" 
+                       class="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-center py-4 rounded-2xl font-semibold flex items-center justify-center gap-2 transition">
+                        <i class="fas fa-envelope"></i> Send Email
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Back Button (Important for Chat Restore) -->
+    <script>
+        function goBackToDashboard() {
+            window.location.href = '/';
+        }
+    </script>
+
+</body>
+</html> {% endcomment %}
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ lawyer.name }} | AdalatAI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', system-ui, sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+    <div class="max-w-4xl mx-auto py-8 px-4">
+        
+        <!-- Back Button -->
+        <button onclick="goBackToDashboard()" 
+                class="inline-flex items-center text-blue-600 hover:text-blue-800 mb-8 font-medium transition">
+            <i class="fas fa-arrow-left mr-2"></i> 
+            Back to Dashboard & Chat
+        </button>
+
+        <!-- Lawyer Profile Card -->
+        <div class="bg-white rounded-3xl shadow-xl overflow-hidden">
+            
+            <!-- Header -->
+            <div class="bg-gradient-to-r from-blue-700 to-indigo-700 px-8 py-10 text-white">
+                <div class="flex items-center gap-5">
+                    <div class="w-24 h-24 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-5xl font-bold border border-white/30">
+                        {{ lawyer.name|slice:":1" }}
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-bold">Adv. {{ lawyer.name }}</h1>
+                        <p class="text-blue-100 mt-1 text-lg">{{ lawyer.specialty }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="p-8">
+                <div class="grid md:grid-cols-2 gap-10">
+                    
+                    <!-- Left: Professional Info -->
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800 mb-5 flex items-center gap-2">
+                            <i class="fas fa-briefcase text-blue-600"></i> Professional Details
+                        </h2>
+                        <div class="space-y-5">
+                            <div class="flex gap-4">
+                                <i class="fas fa-id-card text-blue-500 mt-1 text-xl"></i>
+                                <div>
+                                    <p class="text-xs text-gray-500 tracking-widest">LICENSE NUMBER</p>
+                                    <p class="font-medium text-gray-800">{{ lawyer.license_number|default:"Not Available" }}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <i class="fas fa-map-marker-alt text-blue-500 mt-1 text-xl"></i>
+                                <div>
+                                    <p class="text-xs text-gray-500 tracking-widest">LOCATION</p>
+                                    <p class="font-medium text-gray-800">{{ lawyer.location|default:"Pakistan" }}</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4">
+                                <i class="fas fa-clock text-blue-500 mt-1 text-xl"></i>
+                                <div>
+                                    <p class="text-xs text-gray-500 tracking-widest">EXPERIENCE</p>
+                                    <p class="font-medium text-gray-800">{{ lawyer.experience|default:"N/A" }}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Contact Info -->
+                    <div>
+                        <h2 class="text-xl font-semibold text-gray-800 mb-5 flex items-center gap-2">
+                            <i class="fas fa-address-book text-green-600"></i> Contact Information
+                        </h2>
+                        
+                        {% if show_contact %}
+                            <div class="space-y-6">
+                                <!-- WhatsApp - Prominent Button -->
+                                {% if whatsapp_link %}
+                                <a href="{{ whatsapp_link }}" target="_blank"
+                                   class="flex items-center justify-center gap-3 bg-[#25D366] hover:bg-[#20b557] text-white py-4 px-6 rounded-2xl font-semibold text-lg shadow-md transition">
+                                    <i class="fab fa-whatsapp text-3xl"></i>
+                                    <span>WhatsApp pe Message Karo</span>
+                                </a>
+                                {% endif %}
+
+                                <!-- Call Button -->
+                                {% if lawyer.phone %}
+                                <a href="tel:{{ lawyer.phone }}" 
+                                   class="flex items-center justify-center gap-3 bg-green-600 hover:bg-green-700 text-white py-4 px-6 rounded-2xl font-semibold text-lg shadow-md transition">
+                                    <i class="fas fa-phone text-3xl"></i>
+                                    <span>Call Now ({{ lawyer.phone }})</span>
+                                </a>
+                                {% endif %}
+
+                                <!-- Email (Secondary) -->
+                                {% if lawyer.email %}
+                                <a href="mailto:{{ lawyer.email }}" 
+                                   class="flex items-center justify-center gap-3 bg-gray-700 hover:bg-gray-800 text-white py-4 px-6 rounded-2xl font-semibold text-lg shadow-md transition">
+                                    <i class="fas fa-envelope text-3xl"></i>
+                                    <span>Email bhejo</span>
+                                </a>
+                                {% endif %}
+                            </div>
+                        {% else %}
+                            <div class="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center">
+                                <i class="fas fa-lock text-amber-500 text-4xl mb-3"></i>
+                                <p class="text-gray-700 font-medium">Contact details are private</p>
+                                <p class="text-sm text-gray-500 mt-1">Login to view contact options</p>
+                                <a href="{% url 'signup_login' %}" 
+                                   class="mt-4 inline-block bg-blue-600 text-white px-6 py-2.5 rounded-xl hover:bg-blue-700 transition">
+                                    Login Now
+                                </a>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Practice Areas -->
+                <div class="mt-10 pt-8 border-t">
+                    <h2 class="text-xl font-semibold text-gray-800 mb-4">Practice Areas</h2>
+                    <div class="flex flex-wrap gap-2">
+                        {% for spec in lawyer.specialty_list %}
+                            <span class="bg-blue-100 text-blue-700 px-4 py-2 rounded-2xl text-sm font-medium">
+                                {{ spec }}
+                            </span>
+                        {% empty %}
+                            <span class="text-gray-500">General Practice</span>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function goBackToDashboard() {
+            window.location.href = '/';
+        }
+    </script>
+</body>
+</html>

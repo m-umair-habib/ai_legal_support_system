@@ -1,0 +1,13 @@
+__pycache__/
+*.pyc
+
+db.sqlite3
+.env
+media/
+
+data/embeddings/
+*.faiss
+*.pkl
+
+.DS_Store
+Thumbs.db
