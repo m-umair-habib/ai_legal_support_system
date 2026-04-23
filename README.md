@@ -202,16 +202,10 @@ Feel free to fork the repository and submit a pull request.
 
 ---
 
-## 📜 License
-
-This project is licensed under the MIT License.
-
----
-
 ## 👨‍💻 Author
 
-**Umair**
-Aspiring Blockchain & AI Developer
+**Muhammad Umair Habib**
+Aspiring Data Scientist
 Focused on building intelligent, real-world systems using modern technologies.
 
 ---
