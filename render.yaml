@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: adalatai
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn ai_legal_support_system.wsgi:application"
+    envVars:
+      - key: DEBUG
+        value: "False"
+      - key: SECRET_KEY
+        generateValue: true
+      - key: PYTHON_VERSION
+        value: "3.11.9"
+      - key: DJANGO_SETTINGS_MODULE
+        value: "ai_legal_support_system.settings"
